@@ -1,0 +1,43 @@
+from flask import Flask, request, jsonify
+from routes.auth_routes import auth_bp
+from routes.exercise_routes import exercise_bp
+from routes.diet_routes import diet_bp
+from flask_cors import CORS
+from db import get_connection
+
+
+app = Flask(__name__)
+
+# 블루프린트 등록!
+app.register_blueprint(auth_bp)
+app.register_blueprint(exercise_bp)
+app.register_blueprint(diet_bp)
+
+@app.route('/test')
+def test():
+    return "Flask is running!"
+
+from flask import Flask, jsonify
+from db import get_connection
+
+app = Flask(__name__)
+
+@app.route('/db-test')
+def db_test():
+    try:
+        conn = get_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM users")  
+            result = cursor.fetchall()
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=60020)
+
+
+
