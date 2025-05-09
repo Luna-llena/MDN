@@ -42,3 +42,10 @@ def update_body_info():
 
     result = update_user_body(uid, height, weight, bmi)
     return jsonify(result)
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    response = jsonify({"message": "로그아웃 되었습니다."})
+    # 쿠키에 저장된 토큰 제거 (옵션)
+    response.set_cookie('access_token', '', expires=0)
+    return response

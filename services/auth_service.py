@@ -1,5 +1,13 @@
-# 임시 데이터베이스 (DB 열리면 실제 pymysql로 교체)
-dummy_users = []
+# 임시 데이터베이스
+import jwt
+import datetime
+
+SECRET_KEY = "your_secret_key"
+dummy_users = [
+    {"uid": "testuser1", "pass": "1234"},
+    {"uid": "testuser2", "pass": "abcd"},
+    {"uid": "admin", "pass": "admin123"}
+]
 
 def signup_user(data):
     for user in dummy_users:
@@ -9,11 +17,27 @@ def signup_user(data):
     dummy_users.append(data)
     return {"message": "회원가입 성공", "user": data}
 
+
 def login_user(data):
+    uid = data.get("uid")
+    password = data.get("pass")
+
+    # 예시: 사용자 정보 확인
     for user in dummy_users:
-        if user['uid'] == data['uid'] and user['pass'] == data['pass']:
-            return {"message": "로그인 성공", "user": user}
-    return {"message": "로그인 실패"}
+        if user['uid'] == uid and user['pass'] == password:
+            # ✅ 토큰 생성
+            payload = {
+                'uid': uid,
+                'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+            }
+            token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+
+            return {
+                "message": "로그인 성공",
+                "token": token
+            }
+
+    return { "message": "로그인 실패" }
 
 def delete_user_by_uid(uid, password):
     global dummy_users
