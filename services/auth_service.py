@@ -22,10 +22,8 @@ def login_user(data):
     uid = data.get("uid")
     password = data.get("pass")
 
-    # 예시: 사용자 정보 확인
     for user in dummy_users:
         if user['uid'] == uid and user['pass'] == password:
-            # ✅ 토큰 생성
             payload = {
                 'uid': uid,
                 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)

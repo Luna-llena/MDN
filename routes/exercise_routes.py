@@ -1,21 +1,23 @@
+import json
 from flask import Blueprint, request, jsonify
 from services.exercise_service import *
+from db import get_connection
 
 exercise_bp = Blueprint('exercise', __name__)
 
-@exercise_bp.route('/exercise/search', methods=['GET'])
+@exercise_bp.route('/flask/exercise/search', methods=['GET'])
 def search():
     name = request.args.get('name', '')
     results = search_exercises(name)
     return jsonify(results)
 
-@exercise_bp.route('/exercise/recommend', methods=['GET'])
+@exercise_bp.route('/flask/exercise/recommend', methods=['GET'])
 def recommend():
     goal = request.args.get('goal', 'default')
     results = recommend_exercises(goal)
     return jsonify(results)
 
-@exercise_bp.route('/exercise/info', methods=['PUT'])
+@exercise_bp.route('/flask/exercise/info', methods=['PUT'])
 def update_exercise_info():
     data = request.get_json()
     name = data.get("name")
@@ -25,7 +27,7 @@ def update_exercise_info():
     result = update_exercise(name, new_type, new_goal)
     return jsonify(result)
 
-@exercise_bp.route('/exercise/recommend', methods=['POST'])
+@exercise_bp.route('/flask/exercise/recommend', methods=['POST'])
 def recommend_exercise():
     data = request.get_json()
     uid = data.get("uid")
@@ -37,7 +39,7 @@ def recommend_exercise():
     recommended = recommend_exercises(goal, equipment, time)
     return jsonify({"uid": uid, "recommended": recommended})
 
-@exercise_bp.route('/exercise/log', methods=['POST'])
+@exercise_bp.route('/flask/exercise/log', methods=['POST'])
 def log_exercise():
     print("운동 기록 API 요청 정상 도착")
     data = request.get_json()
@@ -50,3 +52,80 @@ def log_exercise():
     result = save_exercise_log(uid, name, sets, duration, is_completed)
     return jsonify(result)
 
+@exercise_bp.route('/flask/record', methods=['POST'])
+def save_exercise_record():
+    conn = None  
+
+    try:
+        data = request.json
+        user_id = data['user_id']
+        recommended_by = data.get('recommended_by', 'preset')
+        exercises = data['recommended_exercises']
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO exercise_logs (user_id, recommended_by, recommended_exercises)
+            VALUES (%s, %s, %s)
+        """, (user_id, recommended_by, json.dumps(exercises)))
+        conn.commit()
+
+        log_id = cursor.lastrowid
+        return jsonify({
+            "status": "success",
+            "message": "운동 추천 기록 저장 완료",
+            "log_id": log_id
+        })
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+        
+@exercise_bp.route('/flask/complete', methods=['POST'])
+def complete_exercise():
+    data = request.json
+    log_id = data['log_id']  # react에서 넘겨받은 log_id 사용
+
+    # 요청이 들어오면 바로 5점 고정 부여
+    completed_sets = 1  # 최소 1세트 수행했다고 가정
+    score = 5
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE exercise_logs
+            SET completed_sets = %s, score = %s
+            WHERE id = %s
+        """, (completed_sets, score, log_id))
+        conn.commit()
+        return jsonify({"status": "success", "message": "운동 수행 완료 기록 반영됨 (5점 부여)"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+    finally:
+        conn.close()
+
+#주간 집계 랭킹 API
+@exercise_bp.route('/flask/rank/weekly', methods=['GET'])
+def get_weekly_rank():
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT user_id, SUM(score) as total_score
+            FROM exercise_logs
+            WHERE timestamp >= NOW() - INTERVAL 7 DAY
+            GROUP BY user_id
+            ORDER BY total_score DESC
+        """)
+        result = cursor.fetchall()
+        conn.close()
+
+        return jsonify({"status": "success", "data": result})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})

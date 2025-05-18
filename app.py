@@ -10,13 +10,17 @@ CORS(app)
 
 # 블루프린트 
 app.register_blueprint(auth_bp)
-app.register_blueprint(exercise_bp)
+app.register_blueprint(exercise_bp, url_prefix='/exercise')
 app.register_blueprint(diet_bp)
 
 # 간단한 상태 확인용 라우터
 @app.route('/test')
 def test():
     return "Flask is running!"
+
+@app.route('/')
+def root():
+    return "연결 성공!"
 
 # DB 테스트 라우터
 @app.route('/db-test')
@@ -35,6 +39,6 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=60020,
-        debug=True  # ✅ 자동 새로고침 on
+        debug=True  
     )
 

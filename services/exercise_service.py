@@ -39,7 +39,6 @@ def recommend_exercises(goal, equipment, time):
     ]
     return dummy_recommend
 
-
 def save_exercise_log(uid, name, sets, duration, is_completed):
     conn = get_connection()
     print("DB 연결 성공")

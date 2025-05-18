@@ -1,0 +1,21 @@
+-- 학과서버에서 실행할 MDN 백엔드 DB 수정문
+-- 작성자: 김민규
+-- 실행 위치: exercise_logs 테이블
+
+운동 추천 기록 + 랭킹 점수 + 시간 저장용 필드 추가
+ALTER TABLE exercise_logs
+ADD COLUMN recommended_by VARCHAR(20) DEFAULT 'preset',
+ADD COLUMN recommended_exercises TEXT,
+ADD COLUMN completed_sets INT DEFAULT 0,
+ADD COLUMN score INT DEFAULT 0,
+ADD COLUMN timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+
+-- 아래 쿼리는 Postman이나 DB 터미널에서 직접 실행해서 랭킹 확인 가능
+SELECT user_id, SUM(score) AS total_score
+FROM exercise_logs
+WHERE timestamp >= NOW() - INTERVAL 7 DAY
+GROUP BY user_id
+ORDER BY total_score DESC;
+
+
