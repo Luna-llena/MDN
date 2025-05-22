@@ -1,5 +1,9 @@
 import json
 from flask import Blueprint, request, jsonify
+from numpy import indices
+import pandas as pd
+from services.db_utils import save_recommendation_log
+from services.exercise_recommendation import get_exercise_recommendation
 from services.exercise_service import *
 from db import get_connection
 
@@ -29,15 +33,47 @@ def update_exercise_info():
 
 @exercise_bp.route('/flask/exercise/recommend', methods=['POST'])
 def recommend_exercise():
-    data = request.get_json()
-    uid = data.get("uid")
-    goal = data.get("goal")
-    equipment = data.get("equipment")
-    time = data.get("time")
+    # 1) 클라이언트 JSON 파싱 및 uid 추출
+    data = request.get_json() or {}
+    uid = data.get('uid')  
+    if not uid:
+        return jsonify({
+            "status": "error",
+            "data": None,
+            "error": "Missing required field: uid"
+        }), 400
 
-    # 나중에 AI가 올리면 바꿀거임 건들 ㄴㄴ
-    recommended = recommend_exercises(goal, equipment, time)
-    return jsonify({"uid": uid, "recommended": recommended})
+    # 2) 사용자 입력(user_input) 구성
+    user_input = {
+        'Sex':                 data.get('sex', 'Male'),
+        'Age':                 data.get('age', 25),
+        'Height':              data.get('height', 1.75),
+        'Weight':              data.get('weight', 70),
+        'Hypertension':        data.get('hypertension', 'No'),
+        'Diabetes':            data.get('diabetes', 'No'),
+        'BMI':                 data.get('bmi', round(data.get('weight',70) / (data.get('height',1.75)**2), 1)),
+        'Level':               data.get('level', 'Normal'),
+        'Fitness Goal':        data.get('goal', 'Weight Loss'),
+        'Fitness Type':        data.get('fitness_type', 'Cardio'),
+        'Workout Environment': data.get('location_preference', 'Home'),
+        'Equipment':           data.get('equipment', 'none').lower(),
+    }
+
+    # 3) AI 추천 호출
+    recs = get_exercise_recommendation(user_input)
+
+    # 4) DB에 추천 기록 저장
+    save_recommendation_log(uid, recs)
+
+    # 5) 응답 반환
+    return jsonify({
+        "status": "success",
+        "data": {
+            "uid": uid,
+            "recommended": recs
+        },
+        "error": None
+    }), 200
 
 @exercise_bp.route('/flask/exercise/log', methods=['POST'])
 def log_exercise():
